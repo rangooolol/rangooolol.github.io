@@ -464,6 +464,37 @@ h2 {
   font-weight: 800;
 }
 
+.muscle-tooltip {
+  position: absolute;
+  left: 18px;
+  top: 86px;
+  z-index: 3;
+  min-width: 154px;
+  border: 1px solid rgba(49, 120, 198, 0.32);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 12px 30px rgba(31, 45, 38, 0.12);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
+.muscle-tooltip strong,
+.muscle-tooltip span {
+  display: block;
+}
+
+.muscle-tooltip strong {
+  font-size: 14px;
+}
+
+.muscle-tooltip span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 4px;
+}
+
 .ai-summary,
 .prescription-panel,
 .case-panel {

@@ -1,5 +1,13 @@
 # Development Changelog
 
+## v0.3.0 - Clickable muscle anatomy model
+
+- Replaced the rounded body model with a more anatomy-like colored muscle model.
+- Added common muscle groups for ordinary users to recognize: chest, neck, trapezius, deltoid, biceps, forearm flexors, abs, obliques, lats, glutes, quads, hamstrings, calves, and adductors.
+- Added click detection on 3D muscle blocks so the selected muscle name appears on the model panel.
+- Kept existing issue highlighting, AI discomfort predictions, and training mapping connected to the new muscle groups.
+- Updated the agent workflow rule: local preview servers must run in the background with log files and port checks.
+
 ## v0.2.0 - Consultation conversion flow
 
 - Added a product requirement breakdown for the consultation conversion workflow.

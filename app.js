@@ -1,11 +1,11 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 
 const areaMeta = {
-  neck: { label: "颈部", color: "#ef6a4d", modelKeys: ["neck", "headMarker"] },
-  shoulder: { label: "肩颈", color: "#ef6a4d", modelKeys: ["leftTrap", "rightTrap"] },
-  chest: { label: "胸椎/胸肌", color: "#3178c6", modelKeys: ["leftChest", "rightChest", "upperBack"] },
-  hip: { label: "髋部", color: "#f5b942", modelKeys: ["leftHip", "rightHip", "hipMarker"] },
-  quad: { label: "大腿前侧", color: "#ef6a4d", modelKeys: ["leftQuad", "rightQuad", "quadMarker"] },
+  neck: { label: "颈部", color: "#ef6a4d", modelKeys: ["neck", "leftSternocleidomastoid", "rightSternocleidomastoid", "headMarker"] },
+  shoulder: { label: "肩颈", color: "#ef6a4d", modelKeys: ["leftTrap", "rightTrap", "leftDeltoid", "rightDeltoid"] },
+  chest: { label: "胸椎/胸肌", color: "#3178c6", modelKeys: ["leftChest", "rightChest", "upperBack", "leftLat", "rightLat"] },
+  hip: { label: "髋部", color: "#f5b942", modelKeys: ["leftHip", "rightHip", "leftGlute", "rightGlute", "hipMarker"] },
+  quad: { label: "大腿前侧", color: "#ef6a4d", modelKeys: ["leftQuad", "rightQuad", "leftAdductor", "rightAdductor", "quadMarker"] },
   hamstring: { label: "大腿后侧", color: "#19a88f", modelKeys: ["leftHam", "rightHam"] },
   calf: { label: "小腿", color: "#a6d95a", modelKeys: ["leftCalf", "rightCalf"] },
 };
@@ -119,6 +119,7 @@ const modelTitle = document.querySelector("#modelTitle");
 const form = document.querySelector("#issueForm");
 const modelContainer = document.querySelector("#modelCanvas");
 const painOverlay = document.querySelector("#painOverlay");
+const muscleTooltip = document.querySelector("#muscleTooltip");
 const predictionList = document.querySelector("#predictionList");
 const prescriptionList = document.querySelector("#prescriptionList");
 const caseList = document.querySelector("#caseList");
@@ -172,9 +173,11 @@ grid.position.y = -2.8;
 scene.add(grid);
 
 const skinMaterial = new THREE.MeshStandardMaterial({
-  color: 0xdce8e1,
+  color: 0xe9eee9,
   roughness: 0.58,
   metalness: 0.12,
+  transparent: true,
+  opacity: 0.72,
 });
 
 const jointMaterial = new THREE.MeshStandardMaterial({
@@ -217,16 +220,36 @@ const markerMaterial = new THREE.MeshStandardMaterial({
 
 const modelParts = {};
 const markers = [];
+const selectableMuscles = [];
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
 let activeAreas = trainings[0].target;
 let dragging = false;
+let dragDistance = 0;
 let startX = 0;
 let startRotation = bodyGroup.rotation.y;
+
+const musclePalette = {
+  chest: 0xeaa087,
+  shoulder: 0xc98bd5,
+  arm: 0x88c9e8,
+  forearm: 0x8fdc8e,
+  core: 0xd6758b,
+  side: 0x9c8bd6,
+  hip: 0xc8d96b,
+  quad: 0xf0a06e,
+  ham: 0x79c8a5,
+  calf: 0x96d46d,
+  neck: 0x7bc4c7,
+  back: 0x76aee8,
+};
 
 function mesh(geometry, material, position, scale, name) {
   const item = new THREE.Mesh(geometry, material);
   item.position.set(...position);
   item.scale.set(...scale);
   item.userData.baseScale = scale;
+  item.userData.baseMaterial = material;
   item.castShadow = true;
   item.receiveShadow = true;
   if (name) modelParts[name] = item;
@@ -240,15 +263,25 @@ function capsule(radius, length, position, rotation, scale, name) {
   return item;
 }
 
-function muscle(name, position, scale, rotation = [0, 0, 0]) {
+function muscle(name, label, color, position, scale, rotation = [0, 0, 0]) {
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.38,
+    metalness: 0.08,
+    transparent: true,
+    opacity: 0.86,
+  });
   const item = mesh(
     new THREE.SphereGeometry(0.35, 36, 20),
-    defaultMuscleMaterial.clone(),
+    material,
     position,
     scale,
     name,
   );
   item.rotation.set(...rotation);
+  item.userData.muscleLabel = label;
+  item.userData.baseMaterial = material;
+  selectableMuscles.push(item);
   return item;
 }
 
@@ -259,39 +292,64 @@ function marker(name, position) {
 }
 
 function buildBody() {
-  mesh(new THREE.SphereGeometry(0.62, 48, 32), skinMaterial, [0, 1.62, 0], [0.78, 1, 0.78], "head");
-  capsule(0.16, 0.4, [0, 0.98, 0], [0, 0, 0], [1, 1, 1], "neckBase");
-  mesh(new THREE.SphereGeometry(1, 56, 36), skinMaterial, [0, 0.04, 0], [1.05, 1.45, 0.54], "torso");
-  mesh(new THREE.SphereGeometry(0.85, 42, 28), skinMaterial, [0, -1.28, 0], [0.95, 0.56, 0.5], "pelvis");
+  mesh(new THREE.SphereGeometry(0.58, 48, 32), skinMaterial, [0, 1.62, 0], [0.72, 0.92, 0.66], "head");
+  capsule(0.14, 0.46, [0, 1.0, 0], [0, 0, 0], [1, 1, 1], "neckBase");
+  mesh(new THREE.SphereGeometry(1, 56, 36), skinMaterial, [0, 0.05, 0], [0.86, 1.38, 0.44], "torso");
+  mesh(new THREE.SphereGeometry(0.85, 42, 28), skinMaterial, [0, -1.25, 0], [0.82, 0.52, 0.42], "pelvis");
 
-  capsule(0.2, 1.35, [-1.02, 0.1, 0], [0, 0, -0.16], [1, 1, 1], "leftUpperArm");
-  capsule(0.18, 1.2, [-1.2, -0.95, 0], [0, 0, 0.08], [1, 1, 1], "leftForearm");
-  capsule(0.2, 1.35, [1.02, 0.1, 0], [0, 0, 0.16], [1, 1, 1], "rightUpperArm");
-  capsule(0.18, 1.2, [1.2, -0.95, 0], [0, 0, -0.08], [1, 1, 1], "rightForearm");
+  capsule(0.18, 1.22, [-1.04, 0.08, 0], [0, 0, -0.18], [1, 1, 1], "leftUpperArm");
+  capsule(0.15, 1.16, [-1.2, -0.9, 0], [0, 0, 0.08], [1, 1, 1], "leftForearm");
+  capsule(0.18, 1.22, [1.04, 0.08, 0], [0, 0, 0.18], [1, 1, 1], "rightUpperArm");
+  capsule(0.15, 1.16, [1.2, -0.9, 0], [0, 0, -0.08], [1, 1, 1], "rightForearm");
 
-  capsule(0.26, 1.65, [-0.44, -2.05, 0], [0, 0, 0.08], [1, 1, 1], "leftThigh");
-  capsule(0.23, 1.55, [-0.42, -3.48, 0], [0, 0, -0.03], [1, 1, 1], "leftShin");
-  capsule(0.26, 1.65, [0.44, -2.05, 0], [0, 0, -0.08], [1, 1, 1], "rightThigh");
-  capsule(0.23, 1.55, [0.42, -3.48, 0], [0, 0, 0.03], [1, 1, 1], "rightShin");
+  capsule(0.24, 1.58, [-0.42, -2.02, 0], [0, 0, 0.08], [1, 1, 1], "leftThigh");
+  capsule(0.2, 1.45, [-0.4, -3.38, 0], [0, 0, -0.03], [1, 1, 1], "leftShin");
+  capsule(0.24, 1.58, [0.42, -2.02, 0], [0, 0, -0.08], [1, 1, 1], "rightThigh");
+  capsule(0.2, 1.45, [0.4, -3.38, 0], [0, 0, 0.03], [1, 1, 1], "rightShin");
 
-  for (const [x, y] of [[-0.98, 0.8], [0.98, 0.8], [-1.18, -0.42], [1.18, -0.42], [-0.44, -1.28], [0.44, -1.28], [-0.42, -2.86], [0.42, -2.86]]) {
-    mesh(new THREE.SphereGeometry(0.21, 24, 18), jointMaterial, [x, y, 0], [1, 1, 1]);
+  for (const [x, y] of [[-0.94, 0.78], [0.94, 0.78], [-1.14, -0.42], [1.14, -0.42], [-0.42, -1.25], [0.42, -1.25], [-0.4, -2.78], [0.4, -2.78]]) {
+    mesh(new THREE.SphereGeometry(0.17, 24, 18), jointMaterial, [x, y, 0], [1, 1, 1]);
   }
 
-  muscle("leftChest", [-0.34, 0.25, 0.42], [0.95, 0.72, 0.12], [0.08, -0.2, 0.25]);
-  muscle("rightChest", [0.34, 0.25, 0.42], [0.95, 0.72, 0.12], [0.08, 0.2, -0.25]);
-  muscle("upperBack", [0, 0.28, -0.43], [1.45, 0.82, 0.12], [0, 0, 0]);
-  muscle("leftTrap", [-0.42, 0.82, 0.17], [0.72, 0.42, 0.14], [0.35, 0, -0.38]);
-  muscle("rightTrap", [0.42, 0.82, 0.17], [0.72, 0.42, 0.14], [0.35, 0, 0.38]);
-  muscle("neck", [0, 1.03, 0.24], [0.54, 0.45, 0.13], [0, 0, 0]);
-  muscle("leftHip", [-0.45, -1.12, 0.36], [0.75, 0.48, 0.14], [0, 0, -0.2]);
-  muscle("rightHip", [0.45, -1.12, 0.36], [0.75, 0.48, 0.14], [0, 0, 0.2]);
-  muscle("leftQuad", [-0.45, -2.03, 0.31], [0.58, 1.36, 0.13], [0, 0, 0.08]);
-  muscle("rightQuad", [0.45, -2.03, 0.31], [0.58, 1.36, 0.13], [0, 0, -0.08]);
-  muscle("leftHam", [-0.45, -2.05, -0.31], [0.52, 1.25, 0.13], [0, 0, 0.06]);
-  muscle("rightHam", [0.45, -2.05, -0.31], [0.52, 1.25, 0.13], [0, 0, -0.06]);
-  muscle("leftCalf", [-0.42, -3.48, -0.22], [0.48, 1.06, 0.13], [0, 0, -0.02]);
-  muscle("rightCalf", [0.42, -3.48, -0.22], [0.48, 1.06, 0.13], [0, 0, 0.02]);
+  muscle("neck", "颈阔肌", musclePalette.neck, [0, 1.06, 0.25], [0.48, 0.44, 0.1], [0, 0, 0]);
+  muscle("leftSternocleidomastoid", "胸锁乳突肌", musclePalette.neck, [-0.16, 1.2, 0.28], [0.2, 0.58, 0.08], [0.12, 0, 0.32]);
+  muscle("rightSternocleidomastoid", "胸锁乳突肌", musclePalette.neck, [0.16, 1.2, 0.28], [0.2, 0.58, 0.08], [0.12, 0, -0.32]);
+  muscle("leftTrap", "斜方肌", musclePalette.back, [-0.42, 0.78, 0.18], [0.62, 0.38, 0.12], [0.36, 0, -0.38]);
+  muscle("rightTrap", "斜方肌", musclePalette.back, [0.42, 0.78, 0.18], [0.62, 0.38, 0.12], [0.36, 0, 0.38]);
+
+  muscle("leftChest", "胸大肌", musclePalette.chest, [-0.34, 0.3, 0.39], [0.88, 0.58, 0.11], [0.08, -0.18, 0.2]);
+  muscle("rightChest", "胸大肌", musclePalette.chest, [0.34, 0.3, 0.39], [0.88, 0.58, 0.11], [0.08, 0.18, -0.2]);
+  muscle("upperBack", "上背肌群", musclePalette.back, [0, 0.28, -0.36], [1.25, 0.72, 0.12], [0, 0, 0]);
+  muscle("leftLat", "背阔肌", musclePalette.side, [-0.64, -0.18, 0.08], [0.42, 1.1, 0.1], [0, 0.26, -0.16]);
+  muscle("rightLat", "背阔肌", musclePalette.side, [0.64, -0.18, 0.08], [0.42, 1.1, 0.1], [0, -0.26, 0.16]);
+  muscle("leftSerratus", "前锯肌", musclePalette.side, [-0.72, -0.1, 0.34], [0.18, 0.78, 0.08], [0.08, 0, -0.18]);
+  muscle("rightSerratus", "前锯肌", musclePalette.side, [0.72, -0.1, 0.34], [0.18, 0.78, 0.08], [0.08, 0, 0.18]);
+
+  muscle("upperAbs", "腹直肌", musclePalette.core, [0, -0.28, 0.42], [0.46, 0.34, 0.08], [0, 0, 0]);
+  muscle("midAbs", "腹直肌", musclePalette.core, [0, -0.64, 0.43], [0.42, 0.36, 0.08], [0, 0, 0]);
+  muscle("lowerAbs", "腹直肌", musclePalette.core, [0, -1.0, 0.4], [0.36, 0.34, 0.08], [0, 0, 0]);
+  muscle("leftOblique", "腹外斜肌", musclePalette.side, [-0.38, -0.64, 0.36], [0.28, 0.72, 0.08], [0, 0, -0.2]);
+  muscle("rightOblique", "腹外斜肌", musclePalette.side, [0.38, -0.64, 0.36], [0.28, 0.72, 0.08], [0, 0, 0.2]);
+
+  muscle("leftDeltoid", "三角肌", musclePalette.shoulder, [-0.96, 0.54, 0.18], [0.52, 0.48, 0.16], [0.22, 0.18, -0.2]);
+  muscle("rightDeltoid", "三角肌", musclePalette.shoulder, [0.96, 0.54, 0.18], [0.52, 0.48, 0.16], [0.22, -0.18, 0.2]);
+  muscle("leftBiceps", "肱二头肌", musclePalette.arm, [-1.06, -0.05, 0.26], [0.36, 0.72, 0.1], [0, 0, -0.08]);
+  muscle("rightBiceps", "肱二头肌", musclePalette.arm, [1.06, -0.05, 0.26], [0.36, 0.72, 0.1], [0, 0, 0.08]);
+  muscle("leftForearmFlexor", "前臂屈肌群", musclePalette.forearm, [-1.18, -0.84, 0.22], [0.3, 0.72, 0.09], [0, 0, 0.08]);
+  muscle("rightForearmFlexor", "前臂屈肌群", musclePalette.forearm, [1.18, -0.84, 0.22], [0.3, 0.72, 0.09], [0, 0, -0.08]);
+
+  muscle("leftHip", "髂腰肌/髋屈肌", musclePalette.hip, [-0.38, -1.15, 0.35], [0.56, 0.38, 0.12], [0, 0, -0.18]);
+  muscle("rightHip", "髂腰肌/髋屈肌", musclePalette.hip, [0.38, -1.15, 0.35], [0.56, 0.38, 0.12], [0, 0, 0.18]);
+  muscle("leftGlute", "臀中肌", musclePalette.hip, [-0.54, -1.22, -0.26], [0.5, 0.46, 0.12], [0, 0.22, -0.12]);
+  muscle("rightGlute", "臀中肌", musclePalette.hip, [0.54, -1.22, -0.26], [0.5, 0.46, 0.12], [0, -0.22, 0.12]);
+  muscle("leftQuad", "股四头肌", musclePalette.quad, [-0.42, -1.95, 0.29], [0.48, 1.14, 0.12], [0, 0, 0.08]);
+  muscle("rightQuad", "股四头肌", musclePalette.quad, [0.42, -1.95, 0.29], [0.48, 1.14, 0.12], [0, 0, -0.08]);
+  muscle("leftAdductor", "内收肌群", musclePalette.core, [-0.19, -2.05, 0.24], [0.24, 1.0, 0.09], [0, 0, -0.18]);
+  muscle("rightAdductor", "内收肌群", musclePalette.core, [0.19, -2.05, 0.24], [0.24, 1.0, 0.09], [0, 0, 0.18]);
+  muscle("leftHam", "腘绳肌", musclePalette.ham, [-0.42, -2.0, -0.28], [0.44, 1.12, 0.11], [0, 0, 0.06]);
+  muscle("rightHam", "腘绳肌", musclePalette.ham, [0.42, -2.0, -0.28], [0.44, 1.12, 0.11], [0, 0, -0.06]);
+  muscle("leftCalf", "小腿三头肌", musclePalette.calf, [-0.4, -3.34, -0.2], [0.4, 0.96, 0.11], [0, 0, -0.02]);
+  muscle("rightCalf", "小腿三头肌", musclePalette.calf, [0.4, -3.34, -0.2], [0.4, 0.96, 0.11], [0, 0, 0.02]);
 
   marker("headMarker", [0, 1.78, 0.54]);
   marker("quadMarker", [-0.72, -2, 0.42]);
@@ -485,6 +543,25 @@ function renderConsultationInsights() {
   renderPrescription();
 }
 
+function showMuscleTooltip(label, areaLabel) {
+  muscleTooltip.querySelector("strong").textContent = label;
+  muscleTooltip.querySelector("span").textContent = areaLabel || "常见肌群";
+  modelTitle.textContent = `已选择：${label}`;
+}
+
+function selectMuscleAt(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const [hit] = raycaster.intersectObjects(selectableMuscles, false);
+  if (!hit) return;
+
+  const label = hit.object.userData.muscleLabel || "常见肌群";
+  const area = Object.values(areaMeta).find((meta) => meta.modelKeys.includes(hit.object.name));
+  showMuscleTooltip(label, area?.label);
+}
+
 function setJourney(step) {
   document.querySelectorAll(".journey-step").forEach((item) => {
     item.classList.toggle("active", item.dataset.journey === step);
@@ -515,7 +592,7 @@ function updateModelColors() {
         part.material.color.set(hasIssue ? 0xef6a4d : 0x3178c6);
         return;
       }
-      part.material = isActive ? workMaterial.clone() : hasIssue ? hotMaterial.clone() : defaultMuscleMaterial.clone();
+      part.material = isActive ? workMaterial.clone() : hasIssue ? hotMaterial.clone() : part.userData.baseMaterial || defaultMuscleMaterial.clone();
       const base = part.userData.baseScale || [1, 1, 1];
       const lift = isActive ? 1.02 : 1;
       part.scale.set(base[0] * lift, base[1] * lift, base[2] * lift);
@@ -585,6 +662,7 @@ document.querySelectorAll(".journey-step").forEach((button) => {
 
 renderer.domElement.addEventListener("pointerdown", (event) => {
   dragging = true;
+  dragDistance = 0;
   startX = event.clientX;
   startRotation = bodyGroup.rotation.y;
   renderer.domElement.setPointerCapture(event.pointerId);
@@ -593,10 +671,14 @@ renderer.domElement.addEventListener("pointerdown", (event) => {
 renderer.domElement.addEventListener("pointermove", (event) => {
   if (!dragging) return;
   const delta = (event.clientX - startX) / 180;
+  dragDistance = Math.max(dragDistance, Math.abs(event.clientX - startX));
   bodyGroup.rotation.y = startRotation + delta;
 });
 
-renderer.domElement.addEventListener("pointerup", () => {
+renderer.domElement.addEventListener("pointerup", (event) => {
+  if (dragDistance < 6) {
+    selectMuscleAt(event);
+  }
   dragging = false;
 });
 
