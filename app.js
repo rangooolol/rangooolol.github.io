@@ -54,6 +54,63 @@ const trainings = [
   },
 ];
 
+const discomfortRules = [
+  {
+    key: "neckAche",
+    icon: "颈",
+    label: "脖子酸胀",
+    areas: ["neck", "shoulder", "chest"],
+    reason: "头前伸、肩颈高张力和胸椎受限常一起出现",
+    position: { left: "50%", top: "23%" },
+    focus: ["neck", "shoulder", "chest"],
+  },
+  {
+    key: "lowBack",
+    icon: "腰",
+    label: "久坐腰紧",
+    areas: ["hip", "quad", "hamstring"],
+    reason: "髋屈肌紧张和后链控制不足会增加腰部代偿",
+    position: { left: "58%", top: "58%" },
+    focus: ["hip", "hamstring", "quad"],
+  },
+  {
+    key: "kneeTrack",
+    icon: "膝",
+    label: "深蹲膝不适",
+    areas: ["quad", "hip", "calf"],
+    reason: "大腿前侧张力高、髋稳定不足会影响膝轨迹",
+    position: { left: "43%", top: "72%" },
+    focus: ["quad", "hip", "calf"],
+  },
+  {
+    key: "shoulderTight",
+    icon: "肩",
+    label: "肩背紧绷",
+    areas: ["shoulder", "chest", "neck"],
+    reason: "胸椎活动度不足时，肩胛和颈部容易代偿",
+    position: { left: "62%", top: "36%" },
+    focus: ["shoulder", "chest", "neck"],
+  },
+];
+
+const basePrescription = [
+  { title: "先放松", detail: "降低高张力区域，让身体愿意进入动作" },
+  { title: "再激活", detail: "找回核心、肩胛、臀部等稳定肌群参与感" },
+  { title: "后强化", detail: "把正确发力带进深蹲、硬拉、推拉动作" },
+  { title: "周复测", detail: "用体态图、动作视频和疼痛评分验证变化" },
+];
+
+const caseStudies = [
+  {
+    title: "办公室久坐肩颈案例",
+    detail: "4 周：头前伸角度下降 18%，肩颈酸胀频次减少",
+  },
+  {
+    title: "髋紧腰酸训练案例",
+    detail: "6 周：髋活动度提升，硬拉动作中腰部代偿下降",
+  },
+];
+
 const issueList = document.querySelector("#issueList");
 const trainingList = document.querySelector("#trainingList");
 const previewTitle = document.querySelector("#previewTitle");
@@ -61,6 +118,11 @@ const previewTags = document.querySelector("#previewTags");
 const modelTitle = document.querySelector("#modelTitle");
 const form = document.querySelector("#issueForm");
 const modelContainer = document.querySelector("#modelCanvas");
+const painOverlay = document.querySelector("#painOverlay");
+const predictionList = document.querySelector("#predictionList");
+const prescriptionList = document.querySelector("#prescriptionList");
+const caseList = document.querySelector("#caseList");
+const matchScore = document.querySelector("#matchScore");
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -69,11 +131,11 @@ modelContainer.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-camera.position.set(0, 0.25, 8.8);
+camera.position.set(0, 0.2, 9.8);
 camera.lookAt(0, -0.75, 0);
 
 const bodyGroup = new THREE.Group();
-bodyGroup.scale.setScalar(0.78);
+bodyGroup.scale.setScalar(0.66);
 bodyGroup.position.y = 0.18;
 bodyGroup.rotation.y = -0.18;
 scene.add(bodyGroup);
@@ -301,10 +363,139 @@ function renderPreviewTags(targets) {
   });
 }
 
+function getAreaLevels() {
+  return issues.reduce((levels, issue) => {
+    levels[issue.area] = Math.max(levels[issue.area] || 0, issue.level);
+    return levels;
+  }, {});
+}
+
+function getPredictions() {
+  const levels = getAreaLevels();
+  return discomfortRules
+    .map((rule) => {
+      const issueScore = rule.areas.reduce((total, area) => total + (levels[area] || 0), 0);
+      const activeBonus = rule.areas.filter((area) => activeAreas.includes(area)).length * 7;
+      const confidence = Math.min(96, Math.round(46 + issueScore * 7 + activeBonus));
+      return { ...rule, confidence };
+    })
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, 3);
+}
+
+function renderPredictions() {
+  const predictions = getPredictions();
+  predictionList.innerHTML = "";
+  predictions.forEach((prediction) => {
+    const button = document.createElement("button");
+    button.className = "prediction-card";
+    button.type = "button";
+
+    const icon = document.createElement("span");
+    icon.className = "prediction-icon";
+    icon.textContent = prediction.icon;
+
+    const copy = document.createElement("span");
+    const title = document.createElement("strong");
+    title.textContent = `${prediction.label} · ${prediction.confidence}%`;
+    const reason = document.createElement("span");
+    reason.textContent = prediction.reason;
+    const track = document.createElement("span");
+    track.className = "confidence-track";
+    const fill = document.createElement("i");
+    fill.style.width = `${prediction.confidence}%`;
+    track.append(fill);
+    copy.append(title, reason, track);
+
+    button.append(icon, copy);
+    button.addEventListener("click", () => {
+      setActiveAreas(prediction.focus, `${prediction.label}预判链路`);
+      setJourney("predict");
+    });
+    predictionList.appendChild(button);
+  });
+
+  const score = Math.round(predictions.reduce((total, item) => total + item.confidence, 0) / predictions.length);
+  matchScore.textContent = `${score}%`;
+  matchScore.style.background = `radial-gradient(circle at center, white 52%, transparent 54%), conic-gradient(var(--teal) 0 ${score}%, #dce8e1 ${score}% 100%)`;
+}
+
+function renderPainOverlay() {
+  const predictions = getPredictions();
+  painOverlay.innerHTML = "";
+  predictions.forEach((prediction) => {
+    const badge = document.createElement("button");
+    badge.type = "button";
+    badge.className = "pain-badge";
+    badge.style.left = prediction.position.left;
+    badge.style.top = prediction.position.top;
+    const title = document.createElement("strong");
+    title.textContent = prediction.label;
+    const score = document.createElement("span");
+    score.textContent = `${prediction.confidence}%`;
+    badge.append(title, score);
+    badge.addEventListener("click", () => setActiveAreas(prediction.focus, `${prediction.label}预判链路`));
+    painOverlay.appendChild(badge);
+  });
+}
+
+function renderPrescription() {
+  prescriptionList.innerHTML = "";
+  const topPrediction = getPredictions()[0];
+  basePrescription.forEach((step, index) => {
+    const item = document.createElement("div");
+    item.className = "prescription-step";
+    const number = document.createElement("span");
+    number.textContent = String(index + 1).padStart(2, "0");
+    const copy = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = index === 2 && topPrediction ? `强化：${topPrediction.label}链路` : step.title;
+    const detail = document.createElement("small");
+    detail.textContent = step.detail;
+    copy.append(title, detail);
+    item.append(number, copy);
+    prescriptionList.appendChild(item);
+  });
+}
+
+function renderCases() {
+  caseList.innerHTML = "";
+  caseStudies.forEach((study) => {
+    const item = document.createElement("article");
+    item.className = "case-card";
+    item.innerHTML = `
+      <div class="case-visual" aria-hidden="true">
+        <span class="case-body before"></span>
+        <span class="case-body after"></span>
+      </div>
+      <div class="case-copy">
+        <strong></strong>
+        <span></span>
+      </div>
+    `;
+    item.querySelector(".case-copy strong").textContent = study.title;
+    item.querySelector(".case-copy span").textContent = study.detail;
+    caseList.appendChild(item);
+  });
+}
+
+function renderConsultationInsights() {
+  renderPredictions();
+  renderPainOverlay();
+  renderPrescription();
+}
+
+function setJourney(step) {
+  document.querySelectorAll(".journey-step").forEach((item) => {
+    item.classList.toggle("active", item.dataset.journey === step);
+  });
+}
+
 function setActiveAreas(areas, title) {
   activeAreas = areas;
   modelTitle.textContent = title;
   updateModelColors();
+  renderConsultationInsights();
   const firstArea = areas[0];
   const selectedRotation = firstArea === "hamstring" || firstArea === "calf" ? Math.PI : firstArea === "hip" ? -0.75 : -0.18;
   bodyGroup.rotation.y = selectedRotation;
@@ -356,6 +547,7 @@ form.addEventListener("submit", (event) => {
   textInput.value = "";
   renderIssues();
   setActiveAreas([area], `${areaMeta[area].label}新增问题`);
+  setJourney("predict");
 });
 
 document.querySelectorAll(".view-toggle button").forEach((button) => {
@@ -377,6 +569,17 @@ document.querySelectorAll(".metric").forEach((button) => {
     if (focus === "posture") setActiveAreas(["neck", "chest", "shoulder"], "体态链路：颈椎 · 胸椎 · 肩胛");
     if (focus === "tension") setActiveAreas(["quad", "hip", "neck"], "高张力区域");
     if (focus === "weekly") setActiveAreas(trainings[0].target, "本周训练核心目标");
+  });
+});
+
+document.querySelectorAll(".journey-step").forEach((button) => {
+  button.addEventListener("click", () => {
+    const step = button.dataset.journey;
+    setJourney(step);
+    if (step === "scan") setActiveAreas(["neck", "quad", "hip"], "咨询建档扫描");
+    if (step === "predict") setActiveAreas(getPredictions()[0].focus, "AI预判不适链路");
+    if (step === "plan") setActiveAreas(trainings[0].target, "训练处方核心链路");
+    if (step === "proof") setActiveAreas(["neck", "chest", "hip"], "相似案例对比链路");
   });
 });
 
@@ -403,6 +606,7 @@ buildBody();
 renderIssues();
 renderTrainings();
 renderPreviewTags(trainings[0].target);
+renderCases();
 setActiveAreas(trainings[0].target, trainings[0].title);
 resize();
 animate();

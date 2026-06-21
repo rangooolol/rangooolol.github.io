@@ -42,6 +42,33 @@
         <section class="panel-block">
           <div class="section-head">
             <div>
+              <p class="eyebrow">咨询链路</p>
+              <h2>从看见到行动</h2>
+            </div>
+          </div>
+          <div class="journey-rail" aria-label="咨询转化路径">
+            <button class="journey-step active" data-journey="scan">
+              <span>01</span>
+              <strong>建档扫描</strong>
+            </button>
+            <button class="journey-step" data-journey="predict">
+              <span>02</span>
+              <strong>预判不适</strong>
+            </button>
+            <button class="journey-step" data-journey="plan">
+              <span>03</span>
+              <strong>训练处方</strong>
+            </button>
+            <button class="journey-step" data-journey="proof">
+              <span>04</span>
+              <strong>案例支撑</strong>
+            </button>
+          </div>
+        </section>
+
+        <section class="panel-block">
+          <div class="section-head">
+            <div>
               <p class="eyebrow">身体问题</p>
               <h2>教练标记</h2>
             </div>
@@ -96,14 +123,37 @@
           </div>
         </div>
         <div id="modelCanvas" class="model-canvas" aria-label="3D身体模型"></div>
+        <div id="painOverlay" class="pain-overlay" aria-label="AI预判不适提示"></div>
         <div class="muscle-legend">
           <span><i class="legend-hot"></i>需放松</span>
           <span><i class="legend-work"></i>训练重点</span>
+          <span><i class="legend-pain"></i>不适预判</span>
           <span><i class="legend-stable"></i>稳定区</span>
         </div>
       </section>
 
       <section class="training-panel">
+        <section class="ai-summary">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">AI 预判</p>
+              <h2>可能的不适</h2>
+            </div>
+            <span id="matchScore" class="score-ring">86%</span>
+          </div>
+          <div id="predictionList" class="prediction-list"></div>
+        </section>
+
+        <section class="prescription-panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">该怎么练</p>
+              <h2>4 步训练处方</h2>
+            </div>
+          </div>
+          <div id="prescriptionList" class="prescription-list"></div>
+        </section>
+
         <div class="section-head">
           <div>
             <p class="eyebrow">训练计划</p>
@@ -131,6 +181,16 @@
             </div>
             <div class="motion-target"></div>
           </div>
+        </section>
+
+        <section class="case-panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">案例证据</p>
+              <h2>相似改善路径</h2>
+            </div>
+          </div>
+          <div id="caseList" class="case-list"></div>
         </section>
       </section>
     </main>
