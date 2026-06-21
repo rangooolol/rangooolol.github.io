@@ -1,0 +1,6 @@
+node_modules/
+vendor/
+server.log
+server.err
+edge-profile*/
+preview-*.png

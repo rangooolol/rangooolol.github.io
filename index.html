@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>私教会员身体状态系统</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="member-panel">
+        <div class="member-identity">
+          <div class="avatar-ring">
+            <span>林</span>
+          </div>
+          <div>
+            <p class="eyebrow">会员档案</p>
+            <h1>林启航</h1>
+            <div class="quick-stats">
+              <span>28岁</span>
+              <span>178cm</span>
+              <span>72kg</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="metric-grid" aria-label="身体指标">
+          <button class="metric active" data-focus="posture">
+            <span class="metric-value">74</span>
+            <span class="metric-label">体态分</span>
+          </button>
+          <button class="metric" data-focus="tension">
+            <span class="metric-value">3</span>
+            <span class="metric-label">高张力区</span>
+          </button>
+          <button class="metric" data-focus="weekly">
+            <span class="metric-value">5</span>
+            <span class="metric-label">本周训练</span>
+          </button>
+        </div>
+
+        <section class="panel-block">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">身体问题</p>
+              <h2>教练标记</h2>
+            </div>
+            <span class="status-pill">实时映射</span>
+          </div>
+          <div id="issueList" class="issue-list"></div>
+        </section>
+
+        <section class="panel-block">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">新增问题</p>
+              <h2>快速录入</h2>
+            </div>
+          </div>
+          <form id="issueForm" class="issue-form">
+            <label>
+              区域
+              <select id="issueArea">
+                <option value="neck">颈部</option>
+                <option value="shoulder">肩颈</option>
+                <option value="chest">胸椎/胸肌</option>
+                <option value="hip">髋部</option>
+                <option value="quad">大腿前侧</option>
+                <option value="hamstring">大腿后侧</option>
+                <option value="calf">小腿</option>
+              </select>
+            </label>
+            <label>
+              程度
+              <input id="issueLevel" type="range" min="1" max="5" value="3" />
+            </label>
+            <label>
+              描述
+              <input id="issueText" type="text" placeholder="如：脖前倾较明显" />
+            </label>
+            <button type="submit">添加到模型</button>
+          </form>
+        </section>
+      </section>
+
+      <section class="model-stage">
+        <div class="stage-topbar">
+          <div>
+            <p class="eyebrow">3D 身体状态</p>
+            <h2 id="modelTitle">整体肌肉与体态概览</h2>
+          </div>
+          <div class="view-toggle" role="group" aria-label="视角切换">
+            <button class="active" data-view="front">正面</button>
+            <button data-view="side">侧面</button>
+            <button data-view="back">背面</button>
+          </div>
+        </div>
+        <div id="modelCanvas" class="model-canvas" aria-label="3D身体模型"></div>
+        <div class="muscle-legend">
+          <span><i class="legend-hot"></i>需放松</span>
+          <span><i class="legend-work"></i>训练重点</span>
+          <span><i class="legend-stable"></i>稳定区</span>
+        </div>
+      </section>
+
+      <section class="training-panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">训练计划</p>
+            <h2>本周安排</h2>
+          </div>
+          <span class="status-pill">第 4 周</span>
+        </div>
+
+        <div id="trainingList" class="training-list"></div>
+
+        <section class="movement-preview">
+          <div class="preview-info">
+            <p class="eyebrow">动作可视化</p>
+            <h2 id="previewTitle">胸椎打开 + 颈深屈肌激活</h2>
+            <div id="previewTags" class="preview-tags"></div>
+          </div>
+          <div class="motion-window">
+            <div class="motion-figure">
+              <span class="motion-head"></span>
+              <span class="motion-spine"></span>
+              <span class="motion-arm left"></span>
+              <span class="motion-arm right"></span>
+              <span class="motion-leg left"></span>
+              <span class="motion-leg right"></span>
+            </div>
+            <div class="motion-target"></div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
