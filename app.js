@@ -1,17 +1,36 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 const areaMeta = {
-  neck: { label: "颈部", color: "#ef6a4d", modelKeys: ["neck", "leftSternocleidomastoid", "rightSternocleidomastoid", "headMarker"] },
-  shoulder: { label: "肩颈", color: "#ef6a4d", modelKeys: ["leftTrap", "rightTrap", "leftDeltoid", "rightDeltoid"] },
-  chest: { label: "胸椎/胸肌", color: "#3178c6", modelKeys: ["leftChest", "rightChest", "upperBack", "leftLat", "rightLat"] },
-  hip: { label: "髋部", color: "#f5b942", modelKeys: ["leftHip", "rightHip", "leftGlute", "rightGlute", "hipMarker"] },
-  quad: { label: "大腿前侧", color: "#ef6a4d", modelKeys: ["leftQuad", "rightQuad", "leftAdductor", "rightAdductor", "quadMarker"] },
-  hamstring: { label: "大腿后侧", color: "#19a88f", modelKeys: ["leftHam", "rightHam"] },
-  calf: { label: "小腿", color: "#a6d95a", modelKeys: ["leftCalf", "rightCalf"] },
+  neck: { label: "颈部", color: "#ef6a4d", muscles: ["斜方肌", "胸锁乳突肌", "头夹肌"] },
+  shoulder: { label: "肩颈", color: "#ef6a4d", muscles: ["三角肌", "斜方肌", "肱二头肌", "肱三头肌"] },
+  chest: { label: "胸椎/胸肌", color: "#3178c6", muscles: ["胸大肌", "前锯肌", "斜方肌"] },
+  hip: { label: "髋部", color: "#f5b942", muscles: ["臀大肌", "臀中肌", "大腿内收肌", "腘绳肌"] },
+  quad: { label: "大腿前侧", color: "#ef6a4d", muscles: ["股四头肌", "大腿内收肌"] },
+  hamstring: { label: "大腿后侧", color: "#19a88f", muscles: ["腘绳肌", "臀大肌"] },
+  calf: { label: "小腿", color: "#a6d95a", muscles: ["腓肠肌", "比目鱼肌"] },
+};
+
+const muscleAreas = {
+  胸大肌: ["chest"],
+  前锯肌: ["chest", "shoulder"],
+  胸锁乳突肌: ["neck"],
+  三角肌: ["shoulder"],
+  斜方肌: ["neck", "shoulder", "chest"],
+  头夹肌: ["neck", "shoulder"],
+  肱二头肌: ["shoulder"],
+  肱三头肌: ["shoulder"],
+  股四头肌: ["quad"],
+  腘绳肌: ["hamstring", "hip"],
+  臀大肌: ["hip", "hamstring"],
+  臀中肌: ["hip"],
+  腓肠肌: ["calf"],
+  比目鱼肌: ["calf"],
+  大腿内收肌: ["hip", "quad"],
 };
 
 const issues = [
-  { id: crypto.randomUUID(), area: "neck", text: "脖前倾明显", level: 4 },
+  { id: crypto.randomUUID(), area: "neck", text: "脖前倾比较明显", level: 4 },
   { id: crypto.randomUUID(), area: "quad", text: "大腿前侧张力高", level: 5 },
   { id: crypto.randomUUID(), area: "hip", text: "髋屈肌活动受限", level: 3 },
 ];
@@ -39,7 +58,7 @@ const trainings = [
     intensity: 3,
   },
   {
-    day: "五",
+    day: "四",
     title: "后链强化 + 小腿弹性",
     target: ["hamstring", "calf"],
     detail: "臀桥 / 提踵 / 腘绳肌离心",
@@ -103,11 +122,11 @@ const basePrescription = [
 const caseStudies = [
   {
     title: "办公室久坐肩颈案例",
-    detail: "4 周：头前伸角度下降 18%，肩颈酸胀频次减少",
+    detail: "4周：头前伸角度下降18%，肩颈酸胀频次减少",
   },
   {
     title: "髋紧腰酸训练案例",
-    detail: "6 周：髋活动度提升，硬拉动作中腰部代偿下降",
+    detail: "6周：髋活动度提升，硬拉动作中腰部代偿下降",
   },
 ];
 
@@ -132,17 +151,16 @@ modelContainer.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-camera.position.set(0, 0.2, 9.8);
-camera.lookAt(0, -0.75, 0);
+camera.position.set(0, 0.25, 8.2);
+camera.lookAt(0, -0.35, 0);
 
 const bodyGroup = new THREE.Group();
-bodyGroup.scale.setScalar(0.66);
-bodyGroup.position.y = 0.18;
+bodyGroup.scale.setScalar(1.08);
+bodyGroup.position.y = -0.1;
 bodyGroup.rotation.y = -0.18;
 scene.add(bodyGroup);
 
-const ambient = new THREE.HemisphereLight(0xffffff, 0xcfd8d1, 2.8);
-scene.add(ambient);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xcfd8d1, 2.6));
 
 const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
 keyLight.position.set(4, 7, 5);
@@ -160,7 +178,7 @@ const floor = new THREE.Mesh(
     roughness: 0.86,
     metalness: 0.05,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.82,
   }),
 );
 floor.rotation.x = -Math.PI / 2;
@@ -172,54 +190,15 @@ const grid = new THREE.GridHelper(7.8, 18, 0xb8c6c0, 0xd6e1dc);
 grid.position.y = -2.8;
 scene.add(grid);
 
-const skinMaterial = new THREE.MeshStandardMaterial({
-  color: 0xe9eee9,
-  roughness: 0.58,
-  metalness: 0.12,
+const outlineMaterial = new THREE.MeshStandardMaterial({
+  color: 0xe4f5ee,
+  roughness: 0.7,
+  metalness: 0.04,
   transparent: true,
-  opacity: 0.72,
+  opacity: 0.12,
+  depthWrite: false,
 });
 
-const jointMaterial = new THREE.MeshStandardMaterial({
-  color: 0xffffff,
-  roughness: 0.45,
-  metalness: 0.18,
-});
-
-const defaultMuscleMaterial = new THREE.MeshStandardMaterial({
-  color: 0xa6d95a,
-  roughness: 0.4,
-  metalness: 0.1,
-  transparent: true,
-  opacity: 0.5,
-});
-
-const hotMaterial = new THREE.MeshStandardMaterial({
-  color: 0xef6a4d,
-  emissive: 0x8f1e0e,
-  emissiveIntensity: 0.25,
-  roughness: 0.34,
-  transparent: true,
-  opacity: 0.78,
-});
-
-const workMaterial = new THREE.MeshStandardMaterial({
-  color: 0x3178c6,
-  emissive: 0x0a3f7b,
-  emissiveIntensity: 0.35,
-  roughness: 0.34,
-  transparent: true,
-  opacity: 0.82,
-});
-
-const markerMaterial = new THREE.MeshStandardMaterial({
-  color: 0xef6a4d,
-  emissive: 0xef6a4d,
-  emissiveIntensity: 0.8,
-});
-
-const modelParts = {};
-const markers = [];
 const selectableMuscles = [];
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -228,132 +207,96 @@ let dragging = false;
 let dragDistance = 0;
 let startX = 0;
 let startRotation = bodyGroup.rotation.y;
+let anatomyModel = null;
 
-const musclePalette = {
-  chest: 0xeaa087,
-  shoulder: 0xc98bd5,
-  arm: 0x88c9e8,
-  forearm: 0x8fdc8e,
-  core: 0xd6758b,
-  side: 0x9c8bd6,
-  hip: 0xc8d96b,
-  quad: 0xf0a06e,
-  ham: 0x79c8a5,
-  calf: 0x96d46d,
-  neck: 0x7bc4c7,
-  back: 0x76aee8,
-};
-
-function mesh(geometry, material, position, scale, name) {
-  const item = new THREE.Mesh(geometry, material);
+function addOutlineMesh(geometry, position, scale, rotation = [0, 0, 0]) {
+  const item = new THREE.Mesh(geometry, outlineMaterial);
   item.position.set(...position);
   item.scale.set(...scale);
-  item.userData.baseScale = scale;
-  item.userData.baseMaterial = material;
-  item.castShadow = true;
-  item.receiveShadow = true;
-  if (name) modelParts[name] = item;
+  item.rotation.set(...rotation);
+  item.castShadow = false;
+  item.receiveShadow = false;
   bodyGroup.add(item);
   return item;
 }
 
-function capsule(radius, length, position, rotation, scale, name) {
-  const item = mesh(new THREE.CapsuleGeometry(radius, length, 24, 36), skinMaterial, position, scale, name);
-  item.rotation.set(...rotation);
-  return item;
+function buildBodyOutline() {
+  addOutlineMesh(new THREE.SphereGeometry(0.22, 32, 20), [0, 1.34, 0], [0.82, 1.02, 0.76]);
+  addOutlineMesh(new THREE.CapsuleGeometry(0.08, 0.28, 16, 24), [0, 1.02, 0], [1, 1, 1]);
+  addOutlineMesh(new THREE.SphereGeometry(0.7, 42, 28), [0, 0.25, 0], [0.76, 1.18, 0.38]);
+  addOutlineMesh(new THREE.SphereGeometry(0.58, 34, 22), [0, -0.82, 0], [0.74, 0.48, 0.34]);
+  addOutlineMesh(new THREE.CapsuleGeometry(0.12, 0.92, 18, 28), [-0.76, 0.18, 0], [1, 1, 1], [0, 0, -0.22]);
+  addOutlineMesh(new THREE.CapsuleGeometry(0.11, 0.86, 18, 28), [-0.92, -0.55, 0], [1, 1, 1], [0, 0, 0.1]);
+  addOutlineMesh(new THREE.CapsuleGeometry(0.12, 0.92, 18, 28), [0.76, 0.18, 0], [1, 1, 1], [0, 0, 0.22]);
+  addOutlineMesh(new THREE.CapsuleGeometry(0.11, 0.86, 18, 28), [0.92, -0.55, 0], [1, 1, 1], [0, 0, -0.1]);
+  addOutlineMesh(new THREE.CapsuleGeometry(0.15, 1.08, 20, 30), [-0.31, -1.45, 0], [1, 1, 1], [0, 0, 0.04]);
+  addOutlineMesh(new THREE.CapsuleGeometry(0.13, 0.98, 20, 30), [-0.3, -2.32, 0], [1, 1, 1], [0, 0, -0.03]);
+  addOutlineMesh(new THREE.CapsuleGeometry(0.15, 1.08, 20, 30), [0.31, -1.45, 0], [1, 1, 1], [0, 0, -0.04]);
+  addOutlineMesh(new THREE.CapsuleGeometry(0.13, 0.98, 20, 30), [0.3, -2.32, 0], [1, 1, 1], [0, 0, 0.03]);
 }
 
-function muscle(name, label, color, position, scale, rotation = [0, 0, 0]) {
-  const material = new THREE.MeshStandardMaterial({
-    color,
-    roughness: 0.38,
-    metalness: 0.08,
-    transparent: true,
-    opacity: 0.86,
-  });
-  const item = mesh(
-    new THREE.SphereGeometry(0.35, 36, 20),
-    material,
-    position,
-    scale,
-    name,
-  );
-  item.rotation.set(...rotation);
-  item.userData.muscleLabel = label;
-  item.userData.baseMaterial = material;
-  selectableMuscles.push(item);
-  return item;
-}
-
-function marker(name, position) {
-  const item = mesh(new THREE.SphereGeometry(0.08, 20, 20), markerMaterial.clone(), position, [1, 1, 1], name);
-  markers.push(item);
-  return item;
-}
-
-function buildBody() {
-  mesh(new THREE.SphereGeometry(0.58, 48, 32), skinMaterial, [0, 1.62, 0], [0.72, 0.92, 0.66], "head");
-  capsule(0.14, 0.46, [0, 1.0, 0], [0, 0, 0], [1, 1, 1], "neckBase");
-  mesh(new THREE.SphereGeometry(1, 56, 36), skinMaterial, [0, 0.05, 0], [0.86, 1.38, 0.44], "torso");
-  mesh(new THREE.SphereGeometry(0.85, 42, 28), skinMaterial, [0, -1.25, 0], [0.82, 0.52, 0.42], "pelvis");
-
-  capsule(0.18, 1.22, [-1.04, 0.08, 0], [0, 0, -0.18], [1, 1, 1], "leftUpperArm");
-  capsule(0.15, 1.16, [-1.2, -0.9, 0], [0, 0, 0.08], [1, 1, 1], "leftForearm");
-  capsule(0.18, 1.22, [1.04, 0.08, 0], [0, 0, 0.18], [1, 1, 1], "rightUpperArm");
-  capsule(0.15, 1.16, [1.2, -0.9, 0], [0, 0, -0.08], [1, 1, 1], "rightForearm");
-
-  capsule(0.24, 1.58, [-0.42, -2.02, 0], [0, 0, 0.08], [1, 1, 1], "leftThigh");
-  capsule(0.2, 1.45, [-0.4, -3.38, 0], [0, 0, -0.03], [1, 1, 1], "leftShin");
-  capsule(0.24, 1.58, [0.42, -2.02, 0], [0, 0, -0.08], [1, 1, 1], "rightThigh");
-  capsule(0.2, 1.45, [0.4, -3.38, 0], [0, 0, 0.03], [1, 1, 1], "rightShin");
-
-  for (const [x, y] of [[-0.94, 0.78], [0.94, 0.78], [-1.14, -0.42], [1.14, -0.42], [-0.42, -1.25], [0.42, -1.25], [-0.4, -2.78], [0.4, -2.78]]) {
-    mesh(new THREE.SphereGeometry(0.17, 24, 18), jointMaterial, [x, y, 0], [1, 1, 1]);
+function getMuscleName(object) {
+  let current = object;
+  while (current) {
+    if (current.userData?.muscleName) return current.userData.muscleName;
+    current = current.parent;
   }
+  return object.name || "常见肌群";
+}
 
-  muscle("neck", "颈阔肌", musclePalette.neck, [0, 1.06, 0.25], [0.48, 0.44, 0.1], [0, 0, 0]);
-  muscle("leftSternocleidomastoid", "胸锁乳突肌", musclePalette.neck, [-0.16, 1.2, 0.28], [0.2, 0.58, 0.08], [0.12, 0, 0.32]);
-  muscle("rightSternocleidomastoid", "胸锁乳突肌", musclePalette.neck, [0.16, 1.2, 0.28], [0.2, 0.58, 0.08], [0.12, 0, -0.32]);
-  muscle("leftTrap", "斜方肌", musclePalette.back, [-0.42, 0.78, 0.18], [0.62, 0.38, 0.12], [0.36, 0, -0.38]);
-  muscle("rightTrap", "斜方肌", musclePalette.back, [0.42, 0.78, 0.18], [0.62, 0.38, 0.12], [0.36, 0, 0.38]);
+function setupLoadedMuscle(mesh) {
+  const material = mesh.material.clone();
+  material.roughness = 0.64;
+  material.metalness = 0.02;
+  mesh.material = material;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
 
-  muscle("leftChest", "胸大肌", musclePalette.chest, [-0.34, 0.3, 0.39], [0.88, 0.58, 0.11], [0.08, -0.18, 0.2]);
-  muscle("rightChest", "胸大肌", musclePalette.chest, [0.34, 0.3, 0.39], [0.88, 0.58, 0.11], [0.08, 0.18, -0.2]);
-  muscle("upperBack", "上背肌群", musclePalette.back, [0, 0.28, -0.36], [1.25, 0.72, 0.12], [0, 0, 0]);
-  muscle("leftLat", "背阔肌", musclePalette.side, [-0.64, -0.18, 0.08], [0.42, 1.1, 0.1], [0, 0.26, -0.16]);
-  muscle("rightLat", "背阔肌", musclePalette.side, [0.64, -0.18, 0.08], [0.42, 1.1, 0.1], [0, -0.26, 0.16]);
-  muscle("leftSerratus", "前锯肌", musclePalette.side, [-0.72, -0.1, 0.34], [0.18, 0.78, 0.08], [0.08, 0, -0.18]);
-  muscle("rightSerratus", "前锯肌", musclePalette.side, [0.72, -0.1, 0.34], [0.18, 0.78, 0.08], [0.08, 0, 0.18]);
+  const muscleName = getMuscleName(mesh);
+  mesh.userData.muscleName = muscleName;
+  mesh.userData.areaKeys = muscleAreas[muscleName] || [];
+  mesh.userData.baseColor = material.color.clone();
+  mesh.userData.baseEmissive = material.emissive?.clone() || new THREE.Color(0x000000);
+  selectableMuscles.push(mesh);
+}
 
-  muscle("upperAbs", "腹直肌", musclePalette.core, [0, -0.28, 0.42], [0.46, 0.34, 0.08], [0, 0, 0]);
-  muscle("midAbs", "腹直肌", musclePalette.core, [0, -0.64, 0.43], [0.42, 0.36, 0.08], [0, 0, 0]);
-  muscle("lowerAbs", "腹直肌", musclePalette.core, [0, -1.0, 0.4], [0.36, 0.34, 0.08], [0, 0, 0]);
-  muscle("leftOblique", "腹外斜肌", musclePalette.side, [-0.38, -0.64, 0.36], [0.28, 0.72, 0.08], [0, 0, -0.2]);
-  muscle("rightOblique", "腹外斜肌", musclePalette.side, [0.38, -0.64, 0.36], [0.28, 0.72, 0.08], [0, 0, 0.2]);
+function frameAnatomyModel(model) {
+  model.rotation.x = -Math.PI / 2;
+  model.updateMatrixWorld(true);
 
-  muscle("leftDeltoid", "三角肌", musclePalette.shoulder, [-0.96, 0.54, 0.18], [0.52, 0.48, 0.16], [0.22, 0.18, -0.2]);
-  muscle("rightDeltoid", "三角肌", musclePalette.shoulder, [0.96, 0.54, 0.18], [0.52, 0.48, 0.16], [0.22, -0.18, 0.2]);
-  muscle("leftBiceps", "肱二头肌", musclePalette.arm, [-1.06, -0.05, 0.26], [0.36, 0.72, 0.1], [0, 0, -0.08]);
-  muscle("rightBiceps", "肱二头肌", musclePalette.arm, [1.06, -0.05, 0.26], [0.36, 0.72, 0.1], [0, 0, 0.08]);
-  muscle("leftForearmFlexor", "前臂屈肌群", musclePalette.forearm, [-1.18, -0.84, 0.22], [0.3, 0.72, 0.09], [0, 0, 0.08]);
-  muscle("rightForearmFlexor", "前臂屈肌群", musclePalette.forearm, [1.18, -0.84, 0.22], [0.3, 0.72, 0.09], [0, 0, -0.08]);
+  const box = new THREE.Box3().setFromObject(model);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const maxAxis = Math.max(size.x, size.y, size.z);
+  const scale = 3.7 / maxAxis;
 
-  muscle("leftHip", "髂腰肌/髋屈肌", musclePalette.hip, [-0.38, -1.15, 0.35], [0.56, 0.38, 0.12], [0, 0, -0.18]);
-  muscle("rightHip", "髂腰肌/髋屈肌", musclePalette.hip, [0.38, -1.15, 0.35], [0.56, 0.38, 0.12], [0, 0, 0.18]);
-  muscle("leftGlute", "臀中肌", musclePalette.hip, [-0.54, -1.22, -0.26], [0.5, 0.46, 0.12], [0, 0.22, -0.12]);
-  muscle("rightGlute", "臀中肌", musclePalette.hip, [0.54, -1.22, -0.26], [0.5, 0.46, 0.12], [0, -0.22, 0.12]);
-  muscle("leftQuad", "股四头肌", musclePalette.quad, [-0.42, -1.95, 0.29], [0.48, 1.14, 0.12], [0, 0, 0.08]);
-  muscle("rightQuad", "股四头肌", musclePalette.quad, [0.42, -1.95, 0.29], [0.48, 1.14, 0.12], [0, 0, -0.08]);
-  muscle("leftAdductor", "内收肌群", musclePalette.core, [-0.19, -2.05, 0.24], [0.24, 1.0, 0.09], [0, 0, -0.18]);
-  muscle("rightAdductor", "内收肌群", musclePalette.core, [0.19, -2.05, 0.24], [0.24, 1.0, 0.09], [0, 0, 0.18]);
-  muscle("leftHam", "腘绳肌", musclePalette.ham, [-0.42, -2.0, -0.28], [0.44, 1.12, 0.11], [0, 0, 0.06]);
-  muscle("rightHam", "腘绳肌", musclePalette.ham, [0.42, -2.0, -0.28], [0.44, 1.12, 0.11], [0, 0, -0.06]);
-  muscle("leftCalf", "小腿三头肌", musclePalette.calf, [-0.4, -3.34, -0.2], [0.4, 0.96, 0.11], [0, 0, -0.02]);
-  muscle("rightCalf", "小腿三头肌", musclePalette.calf, [0.4, -3.34, -0.2], [0.4, 0.96, 0.11], [0, 0, 0.02]);
+  model.scale.setScalar(scale);
+  model.position.set(-center.x * scale, -center.y * scale - 1.25, -center.z * scale);
+}
 
-  marker("headMarker", [0, 1.78, 0.54]);
-  marker("quadMarker", [-0.72, -2, 0.42]);
-  marker("hipMarker", [0.78, -1.13, 0.45]);
+function loadAnatomyModel() {
+  modelTitle.textContent = "真实肌肉模型加载中";
+  new GLTFLoader().load(
+    "./assets/models/common-muscles.bodyparts3d.glb",
+    (gltf) => {
+      anatomyModel = gltf.scene;
+      anatomyModel.name = "BodyParts3D 常见肌群模型";
+      anatomyModel.traverse((object) => {
+        if (object.isMesh) setupLoadedMuscle(object);
+      });
+      frameAnatomyModel(anatomyModel);
+      bodyGroup.add(anatomyModel);
+      updateModelColors();
+      modelTitle.textContent = trainings[0].title;
+      showMuscleTooltip("点击肌肉查看名称", "BodyParts3D 常见肌群");
+    },
+    undefined,
+    (error) => {
+      console.error(error);
+      modelTitle.textContent = "模型加载失败";
+      showMuscleTooltip("模型加载失败", error?.message || "请检查 GLB 文件是否存在");
+    },
+  );
 }
 
 function renderIssues() {
@@ -362,6 +305,7 @@ function renderIssues() {
     const meta = areaMeta[issue.area];
     const item = document.createElement("div");
     item.className = "issue-chip";
+
     const focusButton = document.createElement("button");
     focusButton.type = "button";
     focusButton.ariaLabel = `查看${meta.label}`;
@@ -372,7 +316,7 @@ function renderIssues() {
     const title = document.createElement("strong");
     title.textContent = issue.text;
     const detail = document.createElement("span");
-    detail.textContent = `${meta.label} · 程度 ${issue.level}/5`;
+    detail.textContent = `${meta.label} / 程度 ${issue.level}/5`;
     copy.append(title, detail);
 
     const severity = document.createElement("div");
@@ -455,7 +399,7 @@ function renderPredictions() {
 
     const copy = document.createElement("span");
     const title = document.createElement("strong");
-    title.textContent = `${prediction.label} · ${prediction.confidence}%`;
+    title.textContent = `${prediction.label} / ${prediction.confidence}%`;
     const reason = document.createElement("span");
     reason.textContent = prediction.reason;
     const track = document.createElement("span");
@@ -467,7 +411,7 @@ function renderPredictions() {
 
     button.append(icon, copy);
     button.addEventListener("click", () => {
-      setActiveAreas(prediction.focus, `${prediction.label}预判链路`);
+      setActiveAreas(prediction.focus, `${prediction.label}预测链路`);
       setJourney("predict");
     });
     predictionList.appendChild(button);
@@ -492,7 +436,7 @@ function renderPainOverlay() {
     const score = document.createElement("span");
     score.textContent = `${prediction.confidence}%`;
     badge.append(title, score);
-    badge.addEventListener("click", () => setActiveAreas(prediction.focus, `${prediction.label}预判链路`));
+    badge.addEventListener("click", () => setActiveAreas(prediction.focus, `${prediction.label}预测链路`));
     painOverlay.appendChild(badge);
   });
 }
@@ -546,10 +490,13 @@ function renderConsultationInsights() {
 function showMuscleTooltip(label, areaLabel) {
   muscleTooltip.querySelector("strong").textContent = label;
   muscleTooltip.querySelector("span").textContent = areaLabel || "常见肌群";
-  modelTitle.textContent = `已选择：${label}`;
+  if (label !== "点击肌肉查看名称") {
+    modelTitle.textContent = `已选择：${label}`;
+  }
 }
 
 function selectMuscleAt(event) {
+  if (!selectableMuscles.length) return;
   const rect = renderer.domElement.getBoundingClientRect();
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -557,9 +504,9 @@ function selectMuscleAt(event) {
   const [hit] = raycaster.intersectObjects(selectableMuscles, false);
   if (!hit) return;
 
-  const label = hit.object.userData.muscleLabel || "常见肌群";
-  const area = Object.values(areaMeta).find((meta) => meta.modelKeys.includes(hit.object.name));
-  showMuscleTooltip(label, area?.label);
+  const label = getMuscleName(hit.object);
+  const areaLabel = (hit.object.userData.areaKeys || []).map((area) => areaMeta[area]?.label).filter(Boolean).join(" / ");
+  showMuscleTooltip(label, areaLabel || "BodyParts3D 常见肌群");
 }
 
 function setJourney(step) {
@@ -580,23 +527,31 @@ function setActiveAreas(areas, title) {
 }
 
 function updateModelColors() {
+  if (!selectableMuscles.length) return;
   const issueAreas = new Set(issues.map((issue) => issue.area));
-  Object.entries(areaMeta).forEach(([area, meta]) => {
-    const isActive = activeAreas.includes(area);
-    const hasIssue = issueAreas.has(area);
-    meta.modelKeys.forEach((key) => {
-      const part = modelParts[key];
-      if (!part) return;
-      if (part.name.endsWith("Marker")) {
-        part.visible = hasIssue || isActive;
-        part.material.color.set(hasIssue ? 0xef6a4d : 0x3178c6);
-        return;
-      }
-      part.material = isActive ? workMaterial.clone() : hasIssue ? hotMaterial.clone() : part.userData.baseMaterial || defaultMuscleMaterial.clone();
-      const base = part.userData.baseScale || [1, 1, 1];
-      const lift = isActive ? 1.02 : 1;
-      part.scale.set(base[0] * lift, base[1] * lift, base[2] * lift);
-    });
+  selectableMuscles.forEach((mesh) => {
+    const areas = mesh.userData.areaKeys || [];
+    const isActive = areas.some((area) => activeAreas.includes(area));
+    const hasIssue = areas.some((area) => issueAreas.has(area));
+    const material = mesh.material;
+    const baseColor = mesh.userData.baseColor || new THREE.Color(0xdddddd);
+
+    material.transparent = false;
+    material.opacity = 1;
+    if (isActive) {
+      material.color.set(0x3178c6);
+      material.emissive.set(0x0a3f7b);
+      material.emissiveIntensity = 0.34;
+    } else if (hasIssue) {
+      material.color.set(0xef6a4d);
+      material.emissive.set(0x8f1e0e);
+      material.emissiveIntensity = 0.26;
+    } else {
+      material.color.copy(baseColor);
+      material.emissive.copy(mesh.userData.baseEmissive || new THREE.Color(0x000000));
+      material.emissiveIntensity = 0;
+    }
+    material.needsUpdate = true;
   });
 }
 
@@ -609,8 +564,9 @@ function resize() {
 
 function animate() {
   requestAnimationFrame(animate);
-  const pulse = 1 + Math.sin(performance.now() * 0.004) * 0.06;
-  markers.forEach((item) => item.scale.setScalar(pulse));
+  if (anatomyModel) {
+    anatomyModel.position.y = Math.sin(performance.now() * 0.0016) * 0.025;
+  }
   renderer.render(scene, camera);
 }
 
@@ -643,7 +599,7 @@ document.querySelectorAll(".metric").forEach((button) => {
     document.querySelectorAll(".metric").forEach((item) => item.classList.remove("active"));
     button.classList.add("active");
     const focus = button.dataset.focus;
-    if (focus === "posture") setActiveAreas(["neck", "chest", "shoulder"], "体态链路：颈椎 · 胸椎 · 肩胛");
+    if (focus === "posture") setActiveAreas(["neck", "chest", "shoulder"], "体态链路：颈椎 / 胸椎 / 肩胛");
     if (focus === "tension") setActiveAreas(["quad", "hip", "neck"], "高张力区域");
     if (focus === "weekly") setActiveAreas(trainings[0].target, "本周训练核心目标");
   });
@@ -654,7 +610,7 @@ document.querySelectorAll(".journey-step").forEach((button) => {
     const step = button.dataset.journey;
     setJourney(step);
     if (step === "scan") setActiveAreas(["neck", "quad", "hip"], "咨询建档扫描");
-    if (step === "predict") setActiveAreas(getPredictions()[0].focus, "AI预判不适链路");
+    if (step === "predict") setActiveAreas(getPredictions()[0].focus, "AI预测不适链路");
     if (step === "plan") setActiveAreas(trainings[0].target, "训练处方核心链路");
     if (step === "proof") setActiveAreas(["neck", "chest", "hip"], "相似案例对比链路");
   });
@@ -684,7 +640,8 @@ renderer.domElement.addEventListener("pointerup", (event) => {
 
 window.addEventListener("resize", resize);
 
-buildBody();
+buildBodyOutline();
+loadAnatomyModel();
 renderIssues();
 renderTrainings();
 renderPreviewTags(trainings[0].target);

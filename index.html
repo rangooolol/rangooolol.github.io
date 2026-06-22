@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>私教会员身体状态系统</title>
     <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
   </head>
   <body>
     <main class="app-shell">
@@ -53,7 +61,7 @@
             </button>
             <button class="journey-step" data-journey="predict">
               <span>02</span>
-              <strong>预判不适</strong>
+              <strong>预测不适</strong>
             </button>
             <button class="journey-step" data-journey="plan">
               <span>03</span>
@@ -123,7 +131,7 @@
           </div>
         </div>
         <div id="modelCanvas" class="model-canvas" aria-label="3D身体模型"></div>
-        <div id="painOverlay" class="pain-overlay" aria-label="AI预判不适提示"></div>
+        <div id="painOverlay" class="pain-overlay" aria-label="AI预测不适提示"></div>
         <div id="muscleTooltip" class="muscle-tooltip" aria-live="polite">
           <strong>点击肌肉查看名称</strong>
           <span>常见肌群识别</span>
@@ -131,8 +139,9 @@
         <div class="muscle-legend">
           <span><i class="legend-hot"></i>需放松</span>
           <span><i class="legend-work"></i>训练重点</span>
-          <span><i class="legend-pain"></i>不适预判</span>
+          <span><i class="legend-pain"></i>不适预测</span>
           <span><i class="legend-stable"></i>稳定区</span>
+          <span>模型：BodyParts3D / CC BY 4.0</span>
         </div>
       </section>
 
@@ -140,7 +149,7 @@
         <section class="ai-summary">
           <div class="section-head">
             <div>
-              <p class="eyebrow">AI 预判</p>
+              <p class="eyebrow">AI 预测</p>
               <h2>可能的不适</h2>
             </div>
             <span id="matchScore" class="score-ring">86%</span>

@@ -1,5 +1,14 @@
 # Development Changelog
 
+## v0.4.0 - BodyParts3D real muscle GLB model
+
+- Replaced the hand-built simplified 3D body with a real segmented muscle GLB generated from BodyParts3D / Anatomography data.
+- Added 15 common clickable muscle groups: pectoralis major, serratus anterior, sternocleidomastoid, deltoid, trapezius, splenius, biceps, triceps, quadriceps, hamstrings, gluteus maximus, gluteus medius, gastrocnemius, soleus, and adductors.
+- Added a subtle non-clickable body outline behind the real muscle meshes so ordinary users can understand the anatomy in full-body context.
+- Mapped coach-marked issues and weekly training targets to the real GLB muscle objects so active and high-tension areas are highlighted on the model.
+- Restored static page copy to readable Chinese and added visible BodyParts3D / CC BY 4.0 attribution in the model legend.
+- Added the optimized web model asset at `assets/models/common-muscles.bodyparts3d.glb`.
+
 ## v0.3.0 - Clickable muscle anatomy model
 
 - Replaced the rounded body model with a more anatomy-like colored muscle model.
